@@ -9,6 +9,9 @@ import java.util.HashMap;
 
 public class Picomap {
 
+    /*
+     * 
+     */
     private class Locations{
         boolean exactMatch;
         int numLocations;
@@ -39,10 +42,12 @@ public class Picomap {
         this.outputFile = output_file;
     }
 
+    /*
+     * De serializes the suffix array binary file
+     */
     private void deserializeSA(String filePath){
         try {
             DataInputStream dataStream = new DataInputStream(new FileInputStream(filePath));
-
             // Read in genome
             int geneLength = dataStream.readInt();
             byte[] bytes = new byte[geneLength];
@@ -61,6 +66,9 @@ public class Picomap {
         }
     }
 
+    /*
+     * Does an accelrated search of the suffix array using the longest common prefix
+     */
     private int[] accelBs(String query){
         int l = 0;
         int r = this.suffixArray.length;
@@ -89,6 +97,10 @@ public class Picomap {
         return new int[]{0,0};
     }
 
+    /*
+     * Compares the given query to an entry in the suffix array
+     * skips comparisons by using the longest common prefix
+     */
     private int[] compareSuffixAccel(String q, int s, int lcpL, int lcpR){
         int comp = 0;
         int n = genome.length();
@@ -105,6 +117,9 @@ public class Picomap {
         return new int[]{q.length() - (n-s),comp,i};
     }
 
+    /*
+     * Divides a large query into smaller substrings of length 25
+     */
     private ArrayList<String> divideQuery(String query){
         ArrayList<String> substrings = new ArrayList<>();
         for (int i = 0; i < query.length(); i += 25) {
@@ -123,8 +138,16 @@ public class Picomap {
         }
     }
 
+    /*
+     * Heuristic to find potential places in out large genome where the query may match
+     */
     private Locations potentialCandidates(String query){
+
+        // Runs an exact search with the entire query to see if there are any exact matches
         int[] exactCheck = this.exactMatch(query);
+        
+        // If there are exact matches we add that to our locations class
+        // We change exactMatch boolean to true
         if(exactCheck[0] != 0){
             int l = exactCheck[1];
             int r = exactCheck[2];
@@ -134,12 +157,19 @@ public class Picomap {
             }
             return new Locations(true, r-l, exactLocations);
         }
+
+        // No exact matches were found time to use our heuristic to find potential matches
         else{
+            // We divide our query
             ArrayList<String> seeds = this.divideQuery(query);
             ArrayList<ArrayList<Integer>> seedMap = new ArrayList<>();
+
+            // For each seed (mini query) we search out genome for potential matches 
             for(String s : seeds){
                 int l = this.accelBs(s+"#")[0];
                 int r = this.accelBs(s+"}")[0];
+
+                // Add potential locations to our seedMap
                 ArrayList<Integer> seedLocations = new ArrayList<>();
                 for(int i = l; i < r; i++){
                     seedLocations.add(this.suffixArray[i]);
@@ -161,6 +191,10 @@ public class Picomap {
         }
     }
 
+    /*
+     * Filters the potential matches we found using the mini seeds by checking if multiple seeds
+     * align to similar parts of the genome (max distance here is 15 but can be changed depending on compute)
+     */
     private ArrayList<Integer> filterCandidates(ArrayList<ArrayList<Integer>> potentialMatches){
        HashMap<Integer,Integer> candidateCounts = new HashMap<>();
        for(int i = 0; i < potentialMatches.size(); i++){
@@ -204,6 +238,9 @@ public class Picomap {
         }
     }
 
+    /*
+     * Aligns queries with potential matches using 2D DP algorithm and builds a CIGAR string 
+     */
     private ArrayList<ProblemOutput> alignCandidates(String query, ArrayList<Integer> candidates){
 
         int min_score = Integer.MAX_VALUE;
@@ -298,6 +335,9 @@ public class Picomap {
         return compressed.toString();
     }
 
+    /*
+     * Runs the program for every query and writes the output out to a new file 
+     */
     private void runQueries(){
         try {
             BufferedWriter writer = new BufferedWriter(new FileWriter(this.outputFile));
