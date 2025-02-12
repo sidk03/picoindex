@@ -1,0 +1,6 @@
+# Ignore compiled class files
+*.class
+*.jar
+*.war
+*.ear
+bin/
